@@ -177,16 +177,28 @@ fn demo_string_utilities() {
 
     let test_str = "hello_world";
     println!("String: {}", test_str);
-    println!("  Starts with 'hello': {}", string_starts_with(test_str, "hello"));
+    println!(
+        "  Starts with 'hello': {}",
+        string_starts_with(test_str, "hello")
+    );
     println!("  Contains 'world': {}", string_contains(test_str, "world"));
-    println!("  Ends with 'world': {}", string_ends_with(test_str, "world"));
+    println!(
+        "  Ends with 'world': {}",
+        string_ends_with(test_str, "world")
+    );
 
     if let Ok(trimmed) = string_trim("  spaces  ") {
         println!("  Trimmed: '{}'", trimmed);
     }
 
-    println!("  Validate hex 'DEADBEEF': {}", string_validate_hex("DEADBEEF"));
-    println!("  Validate hex 'GGGGGGGG': {}", string_validate_hex("GGGGGGGG"));
+    println!(
+        "  Validate hex 'DEADBEEF': {}",
+        string_validate_hex("DEADBEEF")
+    );
+    println!(
+        "  Validate hex 'GGGGGGGG': {}",
+        string_validate_hex("GGGGGGGG")
+    );
 
     if let Ok(random) = string_random(16) {
         println!("  Random string (16 chars): {}", random);

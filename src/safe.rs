@@ -12,7 +12,7 @@ pub fn mem_read<T: Sized>(address: Address) -> Result<T, &'static str> {
             &mut value as *mut T as *mut std::ffi::c_void,
             std::mem::size_of::<T>(),
         );
-        
+
         if result {
             Ok(value)
         } else {
@@ -29,7 +29,7 @@ pub fn mem_read_bytes(address: Address, size: usize) -> Result<Vec<u8>, &'static
             buffer.as_mut_ptr() as *mut std::ffi::c_void,
             size,
         );
-        
+
         if result {
             Ok(buffer)
         } else {
@@ -46,7 +46,7 @@ pub fn mem_write<T: Sized>(address: Address, value: &T) -> Result<(), &'static s
             value as *const T as *const std::ffi::c_void,
             std::mem::size_of::<T>(),
         );
-        
+
         if result {
             Ok(())
         } else {
@@ -63,7 +63,7 @@ pub fn mem_write_bytes(address: Address, bytes: &[u8]) -> Result<(), &'static st
             bytes.as_ptr() as *const std::ffi::c_void,
             bytes.len(),
         );
-        
+
         if result {
             Ok(())
         } else {
@@ -75,12 +75,8 @@ pub fn mem_write_bytes(address: Address, bytes: &[u8]) -> Result<(), &'static st
 #[cfg(target_os = "android")]
 pub fn mem_protect(address: Address, length: usize, protection: i32) -> Result<(), &'static str> {
     unsafe {
-        let result = sys::km_mem_protect(
-            address as *const std::ffi::c_void,
-            length,
-            protection,
-        );
-        
+        let result = sys::km_mem_protect(address as *const std::ffi::c_void, length, protection);
+
         if result == 0 {
             Ok(())
         } else {
@@ -106,7 +102,11 @@ pub fn get_process_name() -> Result<String, &'static str> {
 #[cfg(target_os = "android")]
 pub fn syscall_mem_read(address: Address, buffer: &mut [u8]) -> Result<usize, &'static str> {
     unsafe {
-        let result = sys::km_syscall_mem_read(address, buffer.as_mut_ptr() as *mut std::ffi::c_void, buffer.len());
+        let result = sys::km_syscall_mem_read(
+            address,
+            buffer.as_mut_ptr() as *mut std::ffi::c_void,
+            buffer.len(),
+        );
         if result > 0 {
             Ok(result)
         } else {
@@ -118,7 +118,11 @@ pub fn syscall_mem_read(address: Address, buffer: &mut [u8]) -> Result<usize, &'
 #[cfg(target_os = "android")]
 pub fn syscall_mem_write(address: Address, buffer: &[u8]) -> Result<usize, &'static str> {
     unsafe {
-        let result = sys::km_syscall_mem_write(address, buffer.as_ptr() as *mut std::ffi::c_void, buffer.len());
+        let result = sys::km_syscall_mem_write(
+            address,
+            buffer.as_ptr() as *mut std::ffi::c_void,
+            buffer.len(),
+        );
         if result > 0 {
             Ok(result)
         } else {
@@ -128,7 +132,11 @@ pub fn syscall_mem_write(address: Address, buffer: &[u8]) -> Result<usize, &'sta
 }
 
 #[cfg(target_os = "android")]
-pub fn dump_mem_to_disk(address: Address, size: usize, destination: &str) -> Result<(), &'static str> {
+pub fn dump_mem_to_disk(
+    address: Address,
+    size: usize,
+    destination: &str,
+) -> Result<(), &'static str> {
     unsafe {
         let c_dest = CString::new(destination).unwrap();
         let result = sys::km_dump_mem_to_disk(address, size, c_dest.as_ptr());
@@ -186,7 +194,7 @@ pub fn mem_write<T: Sized>(address: Address, value: &T) -> Result<(), &'static s
             value as *const T as *const std::ffi::c_void,
             std::mem::size_of::<T>(),
         );
-        
+
         match result {
             sys::km_memory_status_t::KM_SUCCESS => Ok(()),
             sys::km_memory_status_t::KM_INV_ADDR => Err("Invalid address"),
@@ -208,7 +216,7 @@ pub fn mem_write_bytes(address: Address, bytes: &[u8]) -> Result<(), &'static st
             bytes.as_ptr() as *const std::ffi::c_void,
             bytes.len(),
         );
-        
+
         match result {
             sys::km_memory_status_t::KM_SUCCESS => Ok(()),
             sys::km_memory_status_t::KM_INV_ADDR => Err("Invalid address"),
@@ -307,7 +315,11 @@ impl Patch {
     }
 
     #[cfg(target_os = "android")]
-    pub fn with_bytes_lib(lib_name: &str, offset: Address, bytes: &[u8]) -> Result<Self, &'static str> {
+    pub fn with_bytes_lib(
+        lib_name: &str,
+        offset: Address,
+        bytes: &[u8],
+    ) -> Result<Self, &'static str> {
         if bytes.is_empty() {
             return Err("Bytes cannot be empty");
         }
@@ -342,12 +354,8 @@ impl Patch {
         unsafe {
             let c_lib = CString::new(lib_name).unwrap();
             let c_asm = CString::new(asm_code).unwrap();
-            let patch = sys::km_patch_create_asm_lib(
-                c_lib.as_ptr(),
-                offset,
-                arch as u32,
-                c_asm.as_ptr(),
-            );
+            let patch =
+                sys::km_patch_create_asm_lib(c_lib.as_ptr(), offset, arch as u32, c_asm.as_ptr());
 
             if patch.valid {
                 Ok(Self {
@@ -369,12 +377,7 @@ impl Patch {
     ) -> Result<Self, &'static str> {
         unsafe {
             let c_asm = CString::new(asm_code).unwrap();
-            let patch = sys::km_patch_create_asm(
-                address,
-                arch as u32,
-                c_asm.as_ptr(),
-                asm_address,
-            );
+            let patch = sys::km_patch_create_asm(address, arch as u32, c_asm.as_ptr(), asm_address);
 
             if patch.valid {
                 Ok(Self {
@@ -386,19 +389,19 @@ impl Patch {
             }
         }
     }
-    
+
     pub fn is_valid(&self) -> bool {
         self.inner.valid
     }
-    
+
     pub fn size(&self) -> usize {
         self.inner.size
     }
-    
+
     pub fn address(&self) -> Address {
         self.inner.address
     }
-    
+
     pub fn modify(&mut self) -> Result<(), &'static str> {
         unsafe {
             let result = sys::km_patch_modify(&mut self.inner as *mut sys::km_patch_t);
@@ -409,7 +412,7 @@ impl Patch {
             }
         }
     }
-    
+
     pub fn restore(&mut self) -> Result<(), &'static str> {
         unsafe {
             let result = sys::km_patch_restore(&mut self.inner as *mut sys::km_patch_t);
@@ -423,7 +426,9 @@ impl Patch {
 
     pub fn get_curr_bytes(&self) -> Result<String, &'static str> {
         unsafe {
-            let ptr = sys::km_patch_get_curr_bytes(&self.inner as *const sys::km_patch_t as *mut sys::km_patch_t);
+            let ptr = sys::km_patch_get_curr_bytes(
+                &self.inner as *const sys::km_patch_t as *mut sys::km_patch_t,
+            );
             if ptr.is_null() {
                 return Err("Failed to get current bytes");
             }
@@ -436,7 +441,9 @@ impl Patch {
 
     pub fn get_orig_bytes(&self) -> Result<String, &'static str> {
         unsafe {
-            let ptr = sys::km_patch_get_orig_bytes(&self.inner as *const sys::km_patch_t as *mut sys::km_patch_t);
+            let ptr = sys::km_patch_get_orig_bytes(
+                &self.inner as *const sys::km_patch_t as *mut sys::km_patch_t,
+            );
             if ptr.is_null() {
                 return Err("Failed to get original bytes");
             }
@@ -449,7 +456,9 @@ impl Patch {
 
     pub fn get_patch_bytes(&self) -> Result<String, &'static str> {
         unsafe {
-            let ptr = sys::km_patch_get_patch_bytes(&self.inner as *const sys::km_patch_t as *mut sys::km_patch_t);
+            let ptr = sys::km_patch_get_patch_bytes(
+                &self.inner as *const sys::km_patch_t as *mut sys::km_patch_t,
+            );
             if ptr.is_null() {
                 return Err("Failed to get patch bytes");
             }
@@ -481,26 +490,26 @@ impl Backup {
     pub fn create(address: Address, size: usize) -> Self {
         unsafe {
             let backup = sys::km_backup_create(address, size);
-            
+
             Self {
                 inner: backup,
                 _marker: PhantomData,
             }
         }
     }
-    
+
     pub fn is_valid(&self) -> bool {
         self.inner.valid
     }
-    
+
     pub fn size(&self) -> usize {
         self.inner.size
     }
-    
+
     pub fn address(&self) -> Address {
         self.inner.address
     }
-    
+
     pub fn restore(&mut self) -> Result<(), &'static str> {
         unsafe {
             let result = sys::km_backup_restore(&mut self.inner as *mut sys::km_backup_t);
@@ -514,7 +523,9 @@ impl Backup {
 
     pub fn get_curr_bytes(&self) -> Result<String, &'static str> {
         unsafe {
-            let ptr = sys::km_backup_get_curr_bytes(&self.inner as *const sys::km_backup_t as *mut sys::km_backup_t);
+            let ptr = sys::km_backup_get_curr_bytes(
+                &self.inner as *const sys::km_backup_t as *mut sys::km_backup_t,
+            );
             if ptr.is_null() {
                 return Err("Failed to get current bytes");
             }
@@ -527,7 +538,9 @@ impl Backup {
 
     pub fn get_orig_bytes(&self) -> Result<String, &'static str> {
         unsafe {
-            let ptr = sys::km_backup_get_orig_bytes(&self.inner as *const sys::km_backup_t as *mut sys::km_backup_t);
+            let ptr = sys::km_backup_get_orig_bytes(
+                &self.inner as *const sys::km_backup_t as *mut sys::km_backup_t,
+            );
             if ptr.is_null() {
                 return Err("Failed to get original bytes");
             }
@@ -559,7 +572,7 @@ pub fn find_bytes_first(start: Address, end: Address, bytes: &[u8], mask: &str) 
             bytes.as_ptr() as *const std::os::raw::c_char,
             c_mask.as_ptr(),
         );
-        
+
         if result == 0 {
             None
         } else {
@@ -573,7 +586,7 @@ pub fn find_hex_first(start: Address, end: Address, hex: &str, mask: &str) -> Op
         let c_hex = CString::new(hex).unwrap();
         let c_mask = CString::new(mask).unwrap();
         let result = sys::km_find_hex_first(start, end, c_hex.as_ptr(), c_mask.as_ptr());
-        
+
         if result == 0 {
             None
         } else {
@@ -586,7 +599,7 @@ pub fn find_pattern_first(start: Address, end: Address, pattern: &str) -> Option
     unsafe {
         let c_pattern = CString::new(pattern).unwrap();
         let result = sys::km_find_pattern_first(start, end, c_pattern.as_ptr());
-        
+
         if result == 0 {
             None
         } else {
@@ -1143,19 +1156,25 @@ impl LinkerScanner {
 
     pub fn solist(&self) -> Address {
         unsafe {
-            sys::km_linker_solist(&self.inner as *const sys::km_linker_scanner_t as *mut sys::km_linker_scanner_t)
+            sys::km_linker_solist(
+                &self.inner as *const sys::km_linker_scanner_t as *mut sys::km_linker_scanner_t,
+            )
         }
     }
 
     pub fn somain(&self) -> Address {
         unsafe {
-            sys::km_linker_somain(&self.inner as *const sys::km_linker_scanner_t as *mut sys::km_linker_scanner_t)
+            sys::km_linker_somain(
+                &self.inner as *const sys::km_linker_scanner_t as *mut sys::km_linker_scanner_t,
+            )
         }
     }
 
     pub fn sonext(&self) -> Address {
         unsafe {
-            sys::km_linker_sonext(&self.inner as *const sys::km_linker_scanner_t as *mut sys::km_linker_scanner_t)
+            sys::km_linker_sonext(
+                &self.inner as *const sys::km_linker_scanner_t as *mut sys::km_linker_scanner_t,
+            )
         }
     }
 
@@ -1528,12 +1547,20 @@ impl NativeBridgeScanner {
     }
 
     pub fn is_valid(&self) -> bool {
-        unsafe { sys::km_native_bridge_scanner_is_valid(&self.inner as *const sys::km_native_bridge_scanner_t as *mut sys::km_native_bridge_scanner_t) }
+        unsafe {
+            sys::km_native_bridge_scanner_is_valid(
+                &self.inner as *const sys::km_native_bridge_scanner_t
+                    as *mut sys::km_native_bridge_scanner_t,
+            )
+        }
     }
 
     pub fn sodl(&self) -> Address {
         unsafe {
-            sys::km_native_bridge_scanner_sodl(&self.inner as *const sys::km_native_bridge_scanner_t as *mut sys::km_native_bridge_scanner_t)
+            sys::km_native_bridge_scanner_sodl(
+                &self.inner as *const sys::km_native_bridge_scanner_t
+                    as *mut sys::km_native_bridge_scanner_t,
+            )
         }
     }
 
@@ -1541,7 +1568,8 @@ impl NativeBridgeScanner {
         unsafe {
             let mut info: sys::km_soinfo_t = std::mem::zeroed();
             let success = sys::km_native_bridge_scanner_get_sodl_info(
-                &self.inner as *const sys::km_native_bridge_scanner_t as *mut sys::km_native_bridge_scanner_t,
+                &self.inner as *const sys::km_native_bridge_scanner_t
+                    as *mut sys::km_native_bridge_scanner_t,
                 &mut info as *mut sys::km_soinfo_t,
             );
 
@@ -1575,7 +1603,8 @@ impl NativeBridgeScanner {
         unsafe {
             let mut infos_ptr: *mut sys::km_soinfo_t = std::ptr::null_mut();
             let count = sys::km_native_bridge_scanner_all_soinfo(
-                &self.inner as *const sys::km_native_bridge_scanner_t as *mut sys::km_native_bridge_scanner_t,
+                &self.inner as *const sys::km_native_bridge_scanner_t
+                    as *mut sys::km_native_bridge_scanner_t,
                 &mut infos_ptr as *mut *mut sys::km_soinfo_t,
             );
 
@@ -1618,7 +1647,8 @@ impl NativeBridgeScanner {
             let mut info: sys::km_soinfo_t = std::mem::zeroed();
 
             let success = sys::km_native_bridge_scanner_find_soinfo(
-                &self.inner as *const sys::km_native_bridge_scanner_t as *mut sys::km_native_bridge_scanner_t,
+                &self.inner as *const sys::km_native_bridge_scanner_t
+                    as *mut sys::km_native_bridge_scanner_t,
                 c_name.as_ptr(),
                 &mut info as *mut sys::km_soinfo_t,
             );
@@ -1651,7 +1681,10 @@ impl NativeBridgeScanner {
 
     pub fn is_houdini(&self) -> bool {
         unsafe {
-            sys::km_native_bridge_scanner_is_houdini(&self.inner as *const sys::km_native_bridge_scanner_t as *mut sys::km_native_bridge_scanner_t)
+            sys::km_native_bridge_scanner_is_houdini(
+                &self.inner as *const sys::km_native_bridge_scanner_t
+                    as *mut sys::km_native_bridge_scanner_t,
+            )
         }
     }
 }
@@ -1660,7 +1693,9 @@ impl NativeBridgeScanner {
 impl Drop for NativeBridgeScanner {
     fn drop(&mut self) {
         unsafe {
-            sys::km_native_bridge_scanner_free(&mut self.inner as *mut sys::km_native_bridge_scanner_t);
+            sys::km_native_bridge_scanner_free(
+                &mut self.inner as *mut sys::km_native_bridge_scanner_t,
+            );
         }
     }
 }
@@ -1818,28 +1853,32 @@ impl PtrValidator {
             Self { inner: validator }
         }
     }
-    
+
     pub fn set_use_cache(&mut self, use_cache: bool) {
         unsafe {
             sys::km_validator_set_cache(&mut self.inner as *mut sys::km_ptr_validator_t, use_cache);
         }
     }
-    
+
     pub fn is_ptr_readable(&mut self, ptr: Address, len: usize) -> bool {
         unsafe {
             sys::km_validator_is_readable(&mut self.inner as *mut sys::km_ptr_validator_t, ptr, len)
         }
     }
-    
+
     pub fn is_ptr_writable(&mut self, ptr: Address, len: usize) -> bool {
         unsafe {
             sys::km_validator_is_writable(&mut self.inner as *mut sys::km_ptr_validator_t, ptr, len)
         }
     }
-    
+
     pub fn is_ptr_executable(&mut self, ptr: Address, len: usize) -> bool {
         unsafe {
-            sys::km_validator_is_executable(&mut self.inner as *mut sys::km_ptr_validator_t, ptr, len)
+            sys::km_validator_is_executable(
+                &mut self.inner as *mut sys::km_ptr_validator_t,
+                ptr,
+                len,
+            )
         }
     }
 }

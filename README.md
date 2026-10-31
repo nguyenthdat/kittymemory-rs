@@ -6,13 +6,16 @@ Production-ready Rust bindings for [KittyMemory](https://github.com/MJx0/KittyMe
 >
 > **Note**: The `keystone` feature for assembly patching is currently experimental and may have build issues. Use hex/bytes patching for production. Windows currentely is not supported, you might get errors if you try to build it in a windows pc, its recomanded to use WSL2 to compile it for android.
 
-**Fixed an issue that when you use kittymemory in windows, you would get an error** (v0.3.5)
+**0.4.0** keeps the 0.3.5 bindings (latest crates.io release, 2026-06-10) and adds the pieces `libysmteam.so` uses that upstream KittyMemory does not: an AArch64 inline hook (`LDR X17, #8; BR X17` plus a relocating trampoline), `page_residency` (`mincore`), and `require_single_mapping` (refuse a range that crosses one `/proc/self/maps` entry). `syscall_mem_read` / `syscall_mem_write` remain the `process_vm_readv` path.
 
 ## Features
 
 ### Core Functionality
 - **Memory Operations**: Read, write, and protect memory with automatic permission handling
 - **Syscall Memory Operations**: Alternative memory read/write using syscalls (Android)
+- **Inline hook (AArch64)**: 16-byte absolute detour, PC-relative relocation, executable trampoline
+- **Page residency**: `mincore` count of resident pages
+- **Single-mapping check**: reject a read/write that crosses one `/proc/self/maps` entry (Linux/Android)
 - **Memory Dumping**: Dump memory regions or memory-mapped files to disk
 - **Memory Patching**: Create patches from bytes, hex strings, or assembly code (with Keystone)
 - **Patch Inspection**: Get current, original, and patch bytes as hex strings

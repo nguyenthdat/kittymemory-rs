@@ -288,14 +288,26 @@ fn main() {
     let ndk_home = env::var("ANDROID_NDK_HOME").unwrap_or_else(|_| {
         env::var("NDK_HOME").expect("ANDROID_NDK_HOME or NDK_HOME must be set to build Kittymemory")
     });
-    let host_tag = if cfg!(target_os = "windows") {
-        "windows-x86_64"
+    let mut host_tag = if cfg!(target_os = "windows") {
+        "windows-x86_64".to_string()
     } else if cfg!(target_os = "macos") {
-        if cfg!(target_arch = "aarch64") { "darwin-arm64" } else { "darwin-x86_64" }
+        if cfg!(target_arch = "aarch64") {
+            "darwin-arm64".to_string()
+        } else {
+            "darwin-x86_64".to_string()
+        }
     } else {
-        "linux-x86_64"
+        "linux-x86_64".to_string()
     };
-    let ndk_sysroot = PathBuf::from(&ndk_home).join(format!("toolchains/llvm/prebuilt/{host_tag}/sysroot"));
+    let prebuilt = PathBuf::from(&ndk_home)
+        .join("toolchains/llvm/prebuilt")
+        .join(&host_tag);
+    if !prebuilt.exists() && host_tag == "darwin-arm64" {
+        println!("cargo:warning=NDK has no darwin-arm64 prebuilt; using darwin-x86_64");
+        host_tag = "darwin-x86_64".to_string();
+    }
+    let ndk_sysroot =
+        PathBuf::from(&ndk_home).join(format!("toolchains/llvm/prebuilt/{host_tag}/sysroot"));
     let ndk_bin = PathBuf::from(&ndk_home).join(format!("toolchains/llvm/prebuilt/{host_tag}/bin"));
     env::remove_var("CLANG_PATH");
     let libclang_dirs = [
@@ -312,7 +324,8 @@ fn main() {
     let clang_lib_include = {
         let candidates = [
             PathBuf::from(&ndk_home).join(format!("toolchains/llvm/prebuilt/{host_tag}/lib/clang")),
-            PathBuf::from(&ndk_home).join(format!("toolchains/llvm/prebuilt/{host_tag}/lib64/clang")),
+            PathBuf::from(&ndk_home)
+                .join(format!("toolchains/llvm/prebuilt/{host_tag}/lib64/clang")),
         ];
         let mut found: Option<PathBuf> = None;
         for base in &candidates {
@@ -323,18 +336,24 @@ fn main() {
                 }
             }
         }
-        found.unwrap_or_else(|| panic!(
-            "Clang lib folder not found in any of: {:?}",
-            candidates.iter().map(|p| p.display().to_string()).collect::<Vec<_>>()
-        ))
+        found.unwrap_or_else(|| {
+            panic!(
+                "Clang lib folder not found in any of: {:?}",
+                candidates
+                    .iter()
+                    .map(|p| p.display().to_string())
+                    .collect::<Vec<_>>()
+            )
+        })
     };
 
-    let target_arch_for_bindgen = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_else(|_| "aarch64".to_string());
+    let target_arch_for_bindgen =
+        env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_else(|_| "aarch64".to_string());
     let (bindgen_target, bindgen_include_arch) = match target_arch_for_bindgen.as_str() {
-        "arm" => ("armv7a-linux-androideabi", "arm-linux-androideabi"),
-        "x86" => ("i686-linux-android", "i686-linux-android"),
-        "x86_64" => ("x86_64-linux-android", "x86_64-linux-android"),
-        _ => ("aarch64-linux-android", "aarch64-linux-android"),
+        "arm" => ("armv7a-linux-androideabi26", "arm-linux-androideabi"),
+        "x86" => ("i686-linux-android26", "i686-linux-android"),
+        "x86_64" => ("x86_64-linux-android26", "x86_64-linux-android"),
+        _ => ("aarch64-linux-android26", "aarch64-linux-android"),
     };
 
     let bindings = bindgen::Builder::default()
@@ -342,7 +361,11 @@ fn main() {
         .clang_arg(format!("--target={}", bindgen_target))
         .clang_arg(format!("-I{}", clang_lib_include.display()))
         .clang_arg(format!("-I{}/usr/include", ndk_sysroot.display()))
-        .clang_arg(format!("-I{}/usr/include/{}", ndk_sysroot.display(), bindgen_include_arch))
+        .clang_arg(format!(
+            "-I{}/usr/include/{}",
+            ndk_sysroot.display(),
+            bindgen_include_arch
+        ))
         .clang_arg(format!("-I{}/usr/include/c++/v1", ndk_sysroot.display()))
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .allowlist_function("km_.*")

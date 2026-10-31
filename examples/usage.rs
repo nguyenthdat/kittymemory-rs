@@ -51,7 +51,10 @@ fn demo_memory_operations() {
 
 #[cfg(target_os = "android")]
 fn string2offset(hex_str: &str) -> usize {
-    let clean = hex_str.trim().trim_start_matches("0x").trim_start_matches("0X");
+    let clean = hex_str
+        .trim()
+        .trim_start_matches("0x")
+        .trim_start_matches("0X");
     usize::from_str_radix(clean, 16).unwrap_or(0)
 }
 
@@ -89,12 +92,16 @@ fn demo_patching() {
 fn demo_library_patching() {
     println!("\n--- Library-Based Patching (Android) ---");
 
-    match Patch::with_hex_lib("libil2cpp.so", string2offset("0xD6D93C"), "62 01 0C 00 1E FF 2F E1") {
+    match Patch::with_hex_lib(
+        "libil2cpp.so",
+        string2offset("0xD6D93C"),
+        "62 01 0C 00 1E FF 2F E1",
+    ) {
         Ok(mut patch) => {
             println!("Library hex patch created: valid={}", patch.is_valid());
             println!("  Address: {:#x}", patch.address());
             println!("  Size: {}", patch.size());
-            
+
             if let Ok(orig) = patch.get_orig_bytes() {
                 println!("  Original bytes: {}", orig);
             }
@@ -102,7 +109,10 @@ fn demo_library_patching() {
                 println!("  Patch bytes: {}", patch_bytes);
             }
         }
-        Err(e) => println!("Library hex patch error (expected if lib not loaded): {}", e),
+        Err(e) => println!(
+            "Library hex patch error (expected if lib not loaded): {}",
+            e
+        ),
     }
 
     match Patch::with_bytes_lib("libc.so", 0x1000, &[0x00, 0x00, 0xA0, 0xE3]) {
@@ -115,7 +125,12 @@ fn demo_library_patching() {
 
     #[cfg(feature = "keystone")]
     {
-        match Patch::with_asm_lib("libil2cpp.so", 0xD6D93C, AsmArch::ARM32, "mov r0, #1; bx lr") {
+        match Patch::with_asm_lib(
+            "libil2cpp.so",
+            0xD6D93C,
+            AsmArch::ARM32,
+            "mov r0, #1; bx lr",
+        ) {
             Ok(patch) => println!("Library asm patch created: valid={}", patch.is_valid()),
             Err(e) => println!("Library asm patch error: {}", e),
         }
@@ -166,7 +181,10 @@ fn demo_utility_functions() {
     }
 
     let dump = hex_dump(0x1000, 32);
-    println!("Hex dump preview:\n{}", dump.lines().take(3).collect::<Vec<_>>().join("\n"));
+    println!(
+        "Hex dump preview:\n{}",
+        dump.lines().take(3).collect::<Vec<_>>().join("\n")
+    );
 
     let addr = 0x12345usize;
     println!("Page start of {:#x}: {:#x}", addr, page_start(addr));
@@ -182,9 +200,21 @@ fn demo_pointer_validation() {
     validator.set_use_cache(true);
 
     let test_ptr = 0x1000usize;
-    println!("Ptr {:#x} readable: {}", test_ptr, validator.is_ptr_readable(test_ptr, 4));
-    println!("Ptr {:#x} writable: {}", test_ptr, validator.is_ptr_writable(test_ptr, 4));
-    println!("Ptr {:#x} executable: {}", test_ptr, validator.is_ptr_executable(test_ptr, 4));
+    println!(
+        "Ptr {:#x} readable: {}",
+        test_ptr,
+        validator.is_ptr_readable(test_ptr, 4)
+    );
+    println!(
+        "Ptr {:#x} writable: {}",
+        test_ptr,
+        validator.is_ptr_writable(test_ptr, 4)
+    );
+    println!(
+        "Ptr {:#x} executable: {}",
+        test_ptr,
+        validator.is_ptr_executable(test_ptr, 4)
+    );
 
     println!();
 }
@@ -248,8 +278,10 @@ fn demo_android_linker() {
 
     for (i, lib) in all_libs.iter().take(5).enumerate() {
         println!("  [{}] {}", i, lib.path);
-        println!("      base={:#x} size={:#x} dynamic={:#x}",
-            lib.base, lib.size, lib.dynamic);
+        println!(
+            "      base={:#x} size={:#x} dynamic={:#x}",
+            lib.base, lib.size, lib.dynamic
+        );
     }
 
     if all_libs.len() > 5 {
@@ -275,12 +307,9 @@ fn demo_android_process_maps() {
     println!("Total memory maps: {}", all_maps.len());
 
     for (i, map) in all_maps.iter().take(5).enumerate() {
-        println!("  [{}] {:#x}-{:#x} {} {}",
-            i,
-            map.start_address,
-            map.end_address,
-            map.protection,
-            map.pathname
+        println!(
+            "  [{}] {:#x}-{:#x} {} {}",
+            i, map.start_address, map.end_address, map.protection, map.pathname
         );
     }
 
@@ -291,7 +320,8 @@ fn demo_android_process_maps() {
     let libc_maps = get_maps_filtered("libc.so", ProcMapFilter::Contains);
     println!("\nlibc.so related maps: {}", libc_maps.len());
     for map in libc_maps.iter().take(3) {
-        println!("  {:#x}-{:#x} {} readable={} writable={} executable={}",
+        println!(
+            "  {:#x}-{:#x} {} readable={} writable={} executable={}",
             map.start_address,
             map.end_address,
             map.protection,
@@ -322,12 +352,16 @@ fn demo_ios_memory_file_info() {
     println!("  Index: {}", base.index());
 
     let text_seg = base.get_segment("__TEXT");
-    println!("  __TEXT segment: {:#x}-{:#x} (size: {:#x})",
-        text_seg.start, text_seg.end, text_seg.size);
+    println!(
+        "  __TEXT segment: {:#x}-{:#x} (size: {:#x})",
+        text_seg.start, text_seg.end, text_seg.size
+    );
 
     let text_sect = base.get_section("__TEXT", "__text");
-    println!("  __text section: {:#x}-{:#x} (size: {:#x})",
-        text_sect.start, text_sect.end, text_sect.size);
+    println!(
+        "  __text section: {:#x}-{:#x} (size: {:#x})",
+        text_sect.start, text_sect.end, text_sect.size
+    );
 
     if let Some(addr) = base.find_symbol("_main") {
         println!("  _main symbol: {:#x}", addr);
