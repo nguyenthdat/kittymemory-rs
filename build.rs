@@ -3,48 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-/// `$NDK/toolchains/llvm/prebuilt/<host>/sysroot/usr/lib/<triple>`, where the static C++ runtime
-/// lives. rustc resolves `-l static=...` itself, so the path has to be passed explicitly.
-fn ndk_sysroot_lib(target_arch: &str) -> Option<PathBuf> {
-    let ndk = env::var("ANDROID_NDK_HOME")
-        .or_else(|_| env::var("NDK_HOME"))
-        .ok()?;
-    let triple = match target_arch {
-        "arm" => "arm-linux-androideabi",
-        "x86" => "i686-linux-android",
-        "x86_64" => "x86_64-linux-android",
-        _ => "aarch64-linux-android",
-    };
-    let prebuilt = fs::read_dir(PathBuf::from(ndk).join("toolchains/llvm/prebuilt"))
-        .ok()?
-        .flatten()
-        .map(|entry| entry.path())
-        .find(|path| path.is_dir())?;
-    let lib = prebuilt.join("sysroot/usr/lib").join(triple);
-    lib.is_dir().then_some(lib)
-}
 
-/// `$NDK/toolchains/llvm/prebuilt/<host>/lib/clang/<version>/lib/linux`, where the compiler-rt
-/// archives live.
-fn ndk_clang_builtins() -> Option<PathBuf> {
-    let ndk = env::var("ANDROID_NDK_HOME")
-        .or_else(|_| env::var("NDK_HOME"))
-        .ok()?;
-    let clang = env::var("TARGET_CLANG_VERSION").unwrap_or_default();
-    let prebuilt = fs::read_dir(PathBuf::from(ndk).join("toolchains/llvm/prebuilt"))
-        .ok()?
-        .flatten()
-        .map(|entry| entry.path())
-        .find(|path| path.is_dir())?;
-    let candidates = fs::read_dir(prebuilt.join("lib/clang")).ok()?;
-    for entry in candidates.flatten() {
-        let dir = entry.path().join("lib/linux");
-        if dir.join(format!("libclang_rt.builtins-aarch64-android{clang}.a")).is_file() || dir.join("libclang_rt.builtins-aarch64-android.a").is_file() {
-            return Some(dir);
-        }
-    }
-    None
-}
 
 fn main() {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -62,6 +21,12 @@ fn main() {
     }
 
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap();
+
+    // Pure-Rust build (the default): no C++ wrapper, no bindgen, and therefore no C++ runtime in
+    // whatever links this crate.
+    if env::var("CARGO_FEATURE_CXX").is_err() {
+        return;
+    }
 
     println!("cargo:rerun-if-changed=wrapper.h");
     println!("cargo:rerun-if-changed=wrapper.cpp");
@@ -319,23 +284,7 @@ fn main() {
     if target_os == "android" {
         build.define("__ANDROID__", None);
         println!("cargo:rustc-link-lib=log");
-        // Link the C++ runtime statically into the cdylib instead of depending on
-        // `libc++_shared.so`. That keeps the mod to a single new native library in the APK: no extra
-        // file in `lib/arm64-v8a`, no second C++ runtime in `/proc/self/maps`, and nothing for the
-        // loader to resolve beyond the system libraries the game already uses.
-        build.cpp_link_stdlib(None);
-        let arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_else(|_| "aarch64".to_string());
-        if let Some(sysroot) = ndk_sysroot_lib(arch.as_str()) {
-            println!("cargo:rustc-link-search=native={}", sysroot.display());
-        }
-        println!("cargo:rustc-link-lib=static=c++_static");
-        println!("cargo:rustc-link-lib=static=c++abi");
-        // libc++ built objects reference the SME/SVE "ZA" ABI helpers that live in compiler-rt;
-        // Rust links its own compiler_builtins, so that archive has to be added explicitly.
-        if let Some(rt) = ndk_clang_builtins() {
-            println!("cargo:rustc-link-search=native={}", rt.display());
-            println!("cargo:rustc-link-lib=static=clang_rt.builtins-aarch64-android");
-        }
+
     } else if target_os == "ios" {
         build.define("__APPLE__", None);
         println!("cargo:rustc-link-lib=framework=Foundation");

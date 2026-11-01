@@ -7,7 +7,7 @@ description = "Rust bindings for KittyMemory, plus the AArch64 inline hook used 
 license = "MIT"
 repository = "https://github.com/rodroidmods/kittymemory-rs"
 documentation = "https://docs.rs/kittymemory-rs"
-keywords = ["memory", "android", "ios", "ffi", "game-hacking"]
+keywords = ["memory", "android", "ios", "ffi"]
 categories = ["external-ffi-bindings", "game-development"]
 readme = "README.md"
 include = [
@@ -23,6 +23,11 @@ include = [
     "README.md",
 ]
 
+[package.metadata.docs.rs]
+default-target = "x86_64-unknown-linux-gnu"
+targets = []
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 libc = "0.2"
 
@@ -32,19 +37,26 @@ cc = "1.0"
 
 [features]
 default = []
+# KittyMemory's C++ wrapper (`safe::*`, `sys::*`). Off by default: the hook engine is pure Rust, and
+# leaving it out keeps libc++ out of the final library entirely.
+cxx = []
 keystone = []
 android = []
 ios = []
+
+# The examples drive KittyMemory's C++ API, so they need the optional wrapper.
+[[example]]
+name = "usage"
+required-features = ["cxx"]
+
+[[example]]
+name = "advanced_features"
+required-features = ["cxx"]
 
 [lib]
 name = "kittymemory"
 path = "src/lib.rs"
 # crate-type = ["staticlib", "cdylib"]
-
-[package.metadata.docs.rs]
-default-target = "x86_64-unknown-linux-gnu"
-targets = []
-rustdoc-args = ["--cfg", "docsrs"]
 
 [profile.release]
 opt-level = 3
@@ -55,7 +67,7 @@ strip = true
 debug = false
 overflow-checks = false
 
-[profile.release.package."*"] 
+[profile.release.package."*"]
 opt-level = 3
 codegen-units = 1
 strip = true

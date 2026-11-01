@@ -1,8 +1,14 @@
-#![doc = include_str!("../README.md")]
+// The README examples drive the C++ API, so they are only compiled as doc tests when that feature
+// is on.
+#![cfg_attr(feature = "cxx", doc = include_str!("../README.md"))]
 
 pub mod hook;
 pub mod reloc;
+// KittyMemory's C++ wrapper. Off unless the `cxx` feature is enabled, which keeps the final binary
+// free of libc++.
+#[cfg(feature = "cxx")]
 pub mod safe;
+#[cfg(feature = "cxx")]
 pub mod sys;
 
 pub use hook::{
@@ -11,6 +17,7 @@ pub use hook::{
     WriteMode, PATCH_LEN,
 };
 pub use reloc::{encode_absolute_branch, relocate};
+#[cfg(feature = "cxx")]
 pub use safe::*;
 
 pub mod prelude {
@@ -20,10 +27,11 @@ pub mod prelude {
         WriteMode, PATCH_LEN,
     };
     pub use crate::reloc::{encode_absolute_branch, relocate};
+    #[cfg(feature = "cxx")]
     pub use crate::safe::*;
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "cxx"))]
 mod tests {
     use super::*;
 
