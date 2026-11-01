@@ -92,8 +92,8 @@ kittymemory = { git = "https://github.com/rodroidmods/kittymemory-rs", branch = 
 
 ### Memory Operations
 
-```rust
-use kittymemory_rs::prelude::*;
+```rust,ignore
+use kittymemory::prelude::*;
 
 let addr = 0x12345678;
 let value: i32 = mem_read(addr)?;
@@ -102,20 +102,23 @@ mem_write(addr, &42i32)?;
 
 ### Memory Patching
 
-```rust
-use kittymemory_rs::prelude::*;
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+use kittymemory::prelude::*;
 
 // Basic patching with absolute address
 let mut patch = Patch::with_hex(0x1000, "90 90 90 90")?;
 patch.modify()?;
 patch.restore()?;
+# Ok(())
+# }
 ```
 
 #### Library-Based Patching (Android)
 
 Create patches using library name + offset - just like the C++ API:
 
-```rust
+```rust,ignore
 #[cfg(target_os = "android")]
 use kittymemory::prelude::*;
 
@@ -144,7 +147,7 @@ bytes_patch.modify()?;
 
 #### Assembly Patching (requires `keystone` feature)
 
-```rust
+```rust,ignore
 // With absolute address
 let mut patch = Patch::with_asm(
     0x1000,
@@ -166,8 +169,8 @@ let mut asm_patch = Patch::with_asm_lib(
 
 ### Pattern Scanning
 
-```rust
-use kittymemory_rs::prelude::*;
+```rust,no_run
+use kittymemory::prelude::*;
 
 if let Some(addr) = find_pattern_first(0x10000000, 0x20000000, "48 8B ? ? 48 89") {
     println!("Found at {:#x}", addr);
@@ -181,7 +184,7 @@ for addr in all_matches {
 
 ### Android: ELF Scanner
 
-```rust
+```rust,ignore
 #[cfg(target_os = "android")]
 use kittymemory::prelude::*;
 
@@ -197,7 +200,7 @@ println!("Native: {}", elf.is_native());
 
 ### Android: LinkerScanner
 
-```rust
+```rust,ignore
 #[cfg(target_os = "android")]
 use kittymemory::prelude::*;
 
@@ -213,7 +216,7 @@ if let Some(info) = linker.find_soinfo("libc.so") {
 
 ### Android: Process Maps
 
-```rust
+```rust,ignore
 #[cfg(target_os = "android")]
 use kittymemory::prelude::*;
 
@@ -228,7 +231,7 @@ let lib_maps = get_maps_filtered("libunity.so", ProcMapFilter::Contains);
 
 ### iOS: MemoryFileInfo
 
-```rust
+```rust,ignore
 #[cfg(target_os = "ios")]
 use kittymemory::prelude::*;
 
@@ -247,8 +250,9 @@ if let Some(lib) = MemoryFileInfo::get_file_info("libSystem.dylib") {
 
 ### Utility Functions
 
-```rust
-use kittymemory_rs::prelude::*;
+```rust,no_run
+# fn main() -> Result<(), Box<dyn std::error::Error>> {
+use kittymemory::prelude::*;
 
 let data = vec![0xDE, 0xAD, 0xBE, 0xEF];
 let hex = data_to_hex(&data);
@@ -258,6 +262,8 @@ let bytes = hex_to_data("DEADBEEF")?;
 
 let dump = hex_dump(0x1000, 64);
 println!("{}", dump);
+# Ok(())
+# }
 ```
 
 ## Building

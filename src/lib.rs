@@ -1,21 +1,25 @@
 #![doc = include_str!("../README.md")]
 
 pub mod hook;
-mod reloc;
+pub mod reloc;
 pub mod safe;
 pub mod sys;
 
 pub use hook::{
-    clear_instruction_cache, hook, page_residency, read_maps, require_single_mapping, HookError,
-    InlineHook, MapRegion, PageResidency, PATCH_LEN,
+    clear_instruction_cache, hook, looks_like_detour, page_residency, perms, pin, read_maps,
+    require_single_mapping, write_code, HookError, InlineHook, MapRegion, PageResidency, Perms,
+    WriteMode, PATCH_LEN,
 };
+pub use reloc::{encode_absolute_branch, relocate};
 pub use safe::*;
 
 pub mod prelude {
     pub use crate::hook::{
-        clear_instruction_cache, hook, page_residency, read_maps, require_single_mapping,
-        HookError, InlineHook, MapRegion, PageResidency, PATCH_LEN,
+        clear_instruction_cache, hook, looks_like_detour, page_residency, perms, pin, read_maps,
+        require_single_mapping, write_code, HookError, InlineHook, MapRegion, PageResidency, Perms,
+        WriteMode, PATCH_LEN,
     };
+    pub use crate::reloc::{encode_absolute_branch, relocate};
     pub use crate::safe::*;
 }
 
