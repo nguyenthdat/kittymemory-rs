@@ -963,7 +963,6 @@ fn map_executable(length: usize) -> Result<usize, HookError> {
             errno: std::io::Error::last_os_error().raw_os_error().unwrap_or(-1),
         });
     }
-    name_mapping(base as usize, length);
     Ok(base as usize)
 }
 
@@ -971,27 +970,14 @@ fn map_executable(length: usize) -> Result<usize, HookError> {
 ///
 /// Protection is page-granular, so while a second slot on a page is written the
 /// page momentarily loses `X` for the already-installed slots on it as well.
-/// Tags an anonymous mapping as `[anon:reaov-trampoline]` so `/proc/self/maps` shows what it is.
-/// `prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, ...)` is best effort: older kernels reject it.
-#[cfg(any(target_os = "linux", target_os = "android"))]
-fn name_mapping(address: usize, length: usize) {
-    const PR_SET_VMA: i32 = 0x5356_4d41;
-    const PR_SET_VMA_ANON_NAME: i32 = 0;
-    const NAME: &[u8] = b"reaov-trampoline\0";
-    // SAFETY: `prctl` only renames an anonymous VMA owned by this process.
-    unsafe {
-        libc::prctl(
-            PR_SET_VMA,
-            PR_SET_VMA_ANON_NAME,
-            address as libc::c_ulong,
-            length as libc::c_ulong,
-            NAME.as_ptr(),
-        );
-    }
-}
+/* The mapping is left anonymous on purpose.
+ *
+ * An earlier revision tagged the trampoline with `prctl(PR_SET_VMA, PR_SET_VMA_ANON_NAME, ...)`
+ * so `/proc/self/maps` would read `[anon:reaov-trampoline]`. That is strictly worse than the
+ * reference mod, whose pool page is anonymous (`reverse/native/src/hook_engine.c`, pool at
+ * 0x34944C): a self-labelled RWX-adjacent page is a one-line grep, while an unnamed page has to be
+ * justified by behaviour. Do not reintroduce a name here. */
 
-#[cfg(not(any(target_os = "linux", target_os = "android")))]
-fn name_mapping(_address: usize, _length: usize) {}
 
 fn write_executable(address: usize, bytes: &[u8]) -> Result<(), HookError> {
     if bytes.is_empty() {
@@ -1039,15 +1025,14 @@ fn protect(address: usize, length: usize, prot: i32) -> Result<(), HookError> {
 /// Android and Linux keep `X` for the duration of the write: the page usually holds this crate's own
 /// instructions too, and dropping `X` there faults on the next instruction fetch. macOS refuses a
 /// `W|X` `mprotect` outright (`EACCES`), so it takes the short non-executable window instead.
+/// Every patch — install and uninstall — goes through the split `W^X` path.
+///
+/// The Android branch used to return [`WriteMode::Rwx`], which meant uninstalling a hook briefly
+/// made the target's code page writable *and* executable. That is the exact window the reference
+/// mod opens at `0x34A154` and the first thing a maps-based scan looks for, so the port no longer
+/// has two modes.
 fn patch_mode() -> WriteMode {
-    #[cfg(any(target_os = "android", target_os = "linux"))]
-    {
-        WriteMode::Rwx
-    }
-    #[cfg(not(any(target_os = "android", target_os = "linux")))]
-    {
-        WriteMode::Split
-    }
+    WriteMode::Split
 }
 
 fn begin_jit_write() {
